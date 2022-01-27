@@ -31,6 +31,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
             counter: 1,
             pluginNames: [],
             installDate: new Date(),
+            lastModified: new Date(),
           });
           return;
         }
@@ -43,6 +44,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
         await transaction.update(ref, {
           pluginNames: [...new Set([...pluginNames, ...registered])],
           counter: increment(1),
+          lastModified: new Date(),
         });
       });
       res.status(200).json({ result: `データベースへ追加しました` });
