@@ -39,13 +39,25 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
         const data = doc.data();
 
         const pluginNames = body.pluginNames || [];
-        const registered = data.pluginNames || [];
+        const registered: string[] = data.pluginNames || [];
 
-        await transaction.update(ref, {
-          pluginNames: [...new Set([...pluginNames, ...registered])],
+        const noChanges = pluginNames.every((plugin) =>
+          registered.includes(plugin)
+        );
+
+        const base = {
           counter: increment(1),
           lastModified: new Date(),
-        });
+        };
+
+        if (noChanges) {
+          await transaction.update(ref, base);
+        } else {
+          await transaction.update(ref, {
+            pluginNames: [...new Set([...pluginNames, ...registered])],
+            ...base,
+          });
+        }
       });
       res.status(200).json({ result: `データベースへ追加しました` });
     }
