@@ -8,8 +8,10 @@ import useSWR from "swr";
 type ContainerProps = Readonly<{}>;
 type Props = ContainerProps & Readonly<{}>;
 
-const fetcher = (url: string): Promise<any> =>
-  fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  return response.json();
+};
 
 const KintoneStatus: VFC = () => {
   const { data, error } = useSWR("/api/kintone/summary", fetcher);
@@ -22,8 +24,8 @@ const KintoneStatus: VFC = () => {
   }
   return (
     <div>
-      <div>利用法人数:{data?.user}</div>
-      <div>プラグインが呼び出された回数:{data?.count}</div>
+      <div>利用法人数:{data?.numUsers}</div>
+      <div>プラグインが呼び出された回数:{data?.counter}</div>
     </div>
   );
 };

@@ -21,9 +21,11 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
       const hostname = body.hostname || "___unknown";
 
       const ref = doc(db, "kintone-plugin-users", hostname);
+      const summaryRef = doc(db, "kintone-plugin-users", "!summary");
 
       await runTransaction(db, async (transaction) => {
         const doc = await transaction.get(ref);
+
         if (!doc.exists()) {
           await transaction.set(ref, {
             hostname,
@@ -32,6 +34,10 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
             pluginNames: [],
             installDate: new Date(),
             lastModified: new Date(),
+          });
+          await transaction.update(summaryRef, {
+            numUsers: increment(1),
+            counter: increment(1),
           });
           return;
         }
@@ -50,6 +56,10 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
           lastModified: new Date(),
         };
 
+        await transaction.update(summaryRef, {
+          counter: increment(1),
+        });
+
         if (noChanges) {
           await transaction.update(ref, base);
         } else {
@@ -65,5 +75,6 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
     res
       .status(500)
       .json({ result: `予期せぬエラーが発生しました。${JSON.stringify(e)}` });
+    throw "API実行時にエラーが発生しました";
   }
 };
