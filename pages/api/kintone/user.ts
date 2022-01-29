@@ -21,7 +21,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
       const hostname = body.hostname || "___unknown";
 
       const ref = doc(db, "kintone-plugin-users", hostname);
-      const summaryRef = doc(db, "kintone-plugin-users", "!summary");
+      // const summaryRef = doc(db, "kintone-plugin-users", "!summary");
 
       await runTransaction(db, async (transaction) => {
         const doc = await transaction.get(ref);
@@ -35,10 +35,10 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
             installDate: new Date(),
             lastModified: new Date(),
           });
-          await transaction.update(summaryRef, {
-            numUsers: increment(1),
-            counter: increment(1),
-          });
+          // await transaction.update(summaryRef, {
+          //   numUsers: increment(1),
+          //   counter: increment(1),
+          // });
           return;
         }
 
@@ -56,9 +56,9 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
           lastModified: new Date(),
         };
 
-        await transaction.update(summaryRef, {
-          counter: increment(1),
-        });
+        // await transaction.update(summaryRef, {
+        //   counter: increment(1),
+        // });
 
         if (noChanges) {
           await transaction.update(ref, base);
