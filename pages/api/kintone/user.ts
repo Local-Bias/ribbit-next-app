@@ -1,3 +1,4 @@
+import { child, get, getDatabase, ref, set, update } from "firebase/database";
 import { doc, increment, runTransaction } from "firebase/firestore";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getDB } from "../../../src/firebase";
@@ -21,10 +22,27 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   try {
     if (req.method === "POST") {
       const body: ExpectedRequestBody = JSON.parse(req.body);
+
+      let causedError = false;
       try {
-        await doPost(body, res);
+        await updateFirestore(body);
       } catch (error) {
+        console.error("firestore更新時にエラーが発生しました", error);
+        causedError = true;
+      }
+      try {
+        await updateRtdb(body);
+      } catch (error) {
+        console.error("realtime database更新時にエラーが発生しました", error);
+        causedError = true;
+      }
+      if (!causedError) {
+        res.status(200).json({ result: `データベースへ追加しました` });
+      } else {
         await postToGAS(body);
+        res.status(500).json({
+          result: `予期せぬエラーが発生しました。`,
+        });
       }
     }
   } catch (e) {
@@ -35,10 +53,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   }
 };
 
-const doPost = async (
-  body: ExpectedRequestBody,
-  res: NextApiResponse<Data>
-) => {
+const updateFirestore = async (body: ExpectedRequestBody) => {
   const db = getDB();
 
   const hostname = body.hostname || "___unknown";
@@ -50,16 +65,7 @@ const doPost = async (
     const doc = await transaction.get(ref);
 
     if (!doc.exists()) {
-      const date = body.installDate ? new Date(body.installDate) : new Date();
-
-      await transaction.set(ref, {
-        hostname,
-        name: body.name || "",
-        counter: body.counter || 1,
-        pluginNames: body.pluginNames || [],
-        installDate: date,
-        lastModified: date,
-      });
+      await transaction.set(ref, getNewProps(hostname, body));
       return;
     }
 
@@ -86,7 +92,51 @@ const doPost = async (
       });
     }
   });
-  res.status(200).json({ result: `データベースへ追加しました` });
+};
+
+const updateRtdb = async (body: ExpectedRequestBody) => {
+  const db = getDatabase();
+
+  const hostname = body.hostname || "___unknown";
+
+  const formattedHostname = hostname
+    .replace(".cybozu.com", "")
+    .replace(".kintone.com", "")
+    .replaceAll(".", "_dot_");
+
+  const snapshot = await get(
+    child(ref(db), `kintone/users/${formattedHostname}`)
+  );
+
+  const reference = ref(db, `kintone/users/${formattedHostname}`);
+
+  if (!snapshot.exists()) {
+    await set(reference, getNewProps(hostname, body, { rtdb: true }));
+  } else {
+    const data = snapshot.val();
+    const counter = data?.counter || 0;
+
+    const pluginNames = body.pluginNames || [];
+    const registered: string[] = data.pluginNames || [];
+
+    const noChanges = pluginNames.every((plugin) =>
+      registered.includes(plugin)
+    );
+
+    const base = {
+      counter: counter + 1,
+      lastModified: new Date().toLocaleString(),
+    };
+
+    if (noChanges) {
+      await update(reference, base);
+    } else {
+      await update(reference, {
+        pluginNames: [...new Set([...pluginNames, ...registered])],
+        ...base,
+      });
+    }
+  }
 };
 
 const postToGAS = (body: ExpectedRequestBody) => {
@@ -97,4 +147,21 @@ const postToGAS = (body: ExpectedRequestBody) => {
       from: "ribbit-next-app",
     }),
   });
+};
+
+const getNewProps = (
+  hostname: string,
+  body: ExpectedRequestBody,
+  options?: { rtdb?: boolean }
+) => {
+  const date = body.installDate ? new Date(body.installDate) : new Date();
+
+  return {
+    hostname,
+    name: body.name || "",
+    counter: body.counter || 1,
+    pluginNames: body.pluginNames || [],
+    installDate: options?.rtdb ? date.toLocaleString() : date,
+    lastModified: options?.rtdb ? date.toLocaleString() : date,
+  };
 };
