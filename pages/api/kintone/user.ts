@@ -99,10 +99,10 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
 
   const hostname = body.hostname || "___unknown";
 
-  let formattedHostname = hostname.replace(".cybozu.com", "");
-
-  formattedHostname = formattedHostname.replace(".kintone.com", "");
-  formattedHostname = formattedHostname.replaceAll(".", "_dot_");
+  const formattedHostname = hostname
+    .replace(".cybozu.com", "")
+    .replace(".kintone.com", "")
+    .replace(/\./g, "_dot_");
 
   const snapshot = await get(
     child(ref(db), `kintone/users/${formattedHostname}`)
