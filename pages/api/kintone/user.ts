@@ -125,7 +125,7 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
 
     const base = {
       counter: counter + 1,
-      lastModified: new Date().toLocaleString(),
+      lastModified: new Date().toLocaleString("ja-JP"),
     };
 
     if (noChanges) {
