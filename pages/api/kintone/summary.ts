@@ -1,6 +1,7 @@
+import { get, getDatabase, ref } from "firebase/database";
 import { collection, getDocs } from "firebase/firestore";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDB } from "../../../src/firebase";
+import { getDB, initializeFirebase } from "../../../src/firebase";
 
 type Data = {
   result: string;
@@ -15,29 +16,14 @@ type ExpectedRequestBody = Partial<{
 
 export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   try {
-    const db = getDB();
-
     if (req.method !== "GET") {
       res.status(400).json({ result: `パラメータが不正です` });
       return;
     }
-    const querySnapshot = await getDocs(collection(db, "kintone-plugin-users"));
 
-    if (querySnapshot.empty) {
-      res.status(400).json({ result: `コレクションが存在しません` });
-      return;
-    }
+    const responseData = await getResponseFromRtdb();
 
-    let counter = 0;
-
-    querySnapshot.forEach((document) => {
-      const data = document.data();
-      counter += data?.counter || 0;
-    });
-
-    res
-      .status(200)
-      .json({ result: `取得完了`, counter, numUsers: querySnapshot.size });
+    res.status(200).json(responseData);
   } catch (e) {
     res
       .status(500)
@@ -45,14 +31,57 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   }
 };
 
-// const getSummaryFromDoc = async (db: Firestore) => {
-//   const docRef = doc(db, "kintone-plugin-users", "!summary");
-//   const docSnap = await getDoc(docRef);
+const getResponseFromFirestore = async () => {
+  const db = getDB();
 
-//   if (!docSnap.exists()) {
-//     res.status(402).json({ result: `データが存在しません` });
-//     return;
-//   }
+  const querySnapshot = await getDocs(collection(db, "kintone-plugin-users"));
 
-//   const data = docSnap.data();
-// };
+  if (querySnapshot.empty) {
+    throw "コレクションが存在しません";
+  }
+
+  let counter = 0;
+
+  querySnapshot.forEach((document) => {
+    const data = document.data();
+    counter += data?.counter || 0;
+  });
+
+  return {
+    result: `取得完了`,
+    counter,
+    numUsers: querySnapshot.size,
+  };
+};
+
+type KintoneUser = Partial<{
+  counter: number;
+  hostname: string;
+  installDate: string;
+  lastModified: string;
+  name: string;
+  pluginNames: string[];
+}>;
+
+const getResponseFromRtdb = async () => {
+  initializeFirebase();
+  const db = getDatabase();
+
+  const reference = ref(db, "kintone/users");
+
+  const snapshot = await get(reference);
+
+  const data: Record<string, KintoneUser> = snapshot.val();
+
+  const kintoneUsers = Object.values(data);
+
+  const counter = kintoneUsers.reduce((acc, user) => {
+    return acc + (user.counter || 0);
+  }, 0);
+
+  return {
+    result: `取得完了`,
+    counter,
+    numUsers: kintoneUsers.length,
+  };
+};
