@@ -15,9 +15,6 @@ type ExpectedRequestBody = Partial<{
   installDate: string;
 }>;
 
-const GAS_END_POINT =
-  "https://script.google.com/macros/s/AKfycbwtMnUUf9oma_5PPYM1JYQrUWjyt8XcKODvtiHghNucI370piyynTSqmN91kx-bN08/exec";
-
 export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   try {
     if (req.method === "POST") {
@@ -104,11 +101,9 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     .replace(".kintone.com", "")
     .replace(/\./g, "_dot_");
 
-  const snapshot = await get(
-    child(ref(db), `kintone/users/${formattedHostname}`)
-  );
-
   const reference = ref(db, `kintone/users/${formattedHostname}`);
+
+  const snapshot = await get(reference);
 
   if (!snapshot.exists()) {
     await set(reference, getNewProps(hostname, body, { rtdb: true }));
@@ -140,7 +135,11 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
 };
 
 const postToGAS = (body: ExpectedRequestBody) => {
-  return fetch(GAS_END_POINT, {
+  if (!process.env.GAS_END_POINT) {
+    console.log("GAS WebアプリケーションのURLが登録されていません");
+    return;
+  }
+  return fetch(process.env.GAS_END_POINT, {
     method: "POST",
     body: JSON.stringify({
       ...body,
