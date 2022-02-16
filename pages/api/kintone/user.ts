@@ -1,5 +1,6 @@
 import { get, getDatabase, ref, set, update } from 'firebase/database';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { initializeFirebase } from '../../../src/firebase';
 
 type Data = {
   result: string;
@@ -41,6 +42,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
 };
 
 const updateRtdb = async (body: ExpectedRequestBody) => {
+  initializeFirebase();
   const db = getDatabase();
 
   const hostname = body.hostname || '___unknown';
