@@ -1,7 +1,7 @@
-import { get, getDatabase, ref } from "firebase/database";
-import { collection, getDocs } from "firebase/firestore";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getDB, initializeFirebase } from "../../../src/firebase";
+import { get, getDatabase, ref } from 'firebase/database';
+import { collection, getDocs } from 'firebase/firestore';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { getDB, initializeFirebase } from '../../../src/firebase';
 
 type Data = {
   result: string;
@@ -16,7 +16,7 @@ type ExpectedRequestBody = Partial<{
 
 export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   try {
-    if (req.method !== "GET") {
+    if (req.method !== 'GET') {
       res.status(400).json({ result: `パラメータが不正です` });
       return;
     }
@@ -25,19 +25,17 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
 
     res.status(200).json(responseData);
   } catch (e) {
-    res
-      .status(500)
-      .json({ result: `予期せぬエラーが発生しました。${JSON.stringify(e)}` });
+    res.status(500).json({ result: `予期せぬエラーが発生しました。${JSON.stringify(e)}` });
   }
 };
 
 const getResponseFromFirestore = async () => {
   const db = getDB();
 
-  const querySnapshot = await getDocs(collection(db, "kintone-plugin-users"));
+  const querySnapshot = await getDocs(collection(db, 'kintone-plugin-users'));
 
   if (querySnapshot.empty) {
-    throw "コレクションが存在しません";
+    throw 'コレクションが存在しません';
   }
 
   let counter = 0;
@@ -61,13 +59,14 @@ type KintoneUser = Partial<{
   lastModified: string;
   name: string;
   pluginNames: string[];
+  ignores: boolean;
 }>;
 
 const getResponseFromRtdb = async () => {
   initializeFirebase();
   const db = getDatabase();
 
-  const reference = ref(db, "kintone/users");
+  const reference = ref(db, 'kintone/users');
 
   const snapshot = await get(reference);
 
@@ -79,9 +78,11 @@ const getResponseFromRtdb = async () => {
     return acc + (user.counter || 0);
   }, 0);
 
+  const numUsers = kintoneUsers.filter((user) => !user.ignores);
+
   return {
     result: `取得完了`,
     counter,
-    numUsers: kintoneUsers.length,
+    numUsers: numUsers.length,
   };
 };
