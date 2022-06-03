@@ -80,6 +80,15 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
         ...base,
       });
     }
+
+    const counterRef = ref(db, `kintone/counter/${formattedHostname}`);
+    const counterSnapshot = await get(counterRef);
+
+    if (counterSnapshot.exists()) {
+      await set(counterRef, Number(counterSnapshot.val()) + 1);
+    } else {
+      await set(counterRef, base.counter);
+    }
   }
 };
 
