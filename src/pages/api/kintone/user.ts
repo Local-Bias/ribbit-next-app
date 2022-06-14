@@ -50,35 +50,12 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     .replace('.kintone.com', '')
     .replace(/\./g, '_dot_');
 
-  const reference = ref(rtdb, `kintone/users/${formattedHostname}`);
-
   const now = DateTime.local();
 
-  const snapshot = await get(reference);
-
-  if (!snapshot.exists()) {
-    await set(reference, getNewProps(hostname, body));
-  } else {
-    const data = snapshot.val();
-    const counter = data?.counter || 0;
-
-    const pluginNames = body.pluginNames || [];
-    const registered: string[] = data.pluginNames || [];
-
-    const noChanges = pluginNames.every((plugin) => registered.includes(plugin));
-
-    const base = {
-      counter: counter + 1,
-    };
-
-    if (noChanges) {
-      await update(reference, base);
-    } else {
-      await update(reference, {
-        pluginNames: [...new Set([...pluginNames, ...registered])],
-        ...base,
-      });
-    }
+  try {
+    await updateUser(formattedHostname, body);
+  } catch (error) {
+    console.error('ユーザー情報の更新に失敗しました');
   }
 
   try {
@@ -97,6 +74,32 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     await set(ref(rtdb, `kintone/lastModified/${formattedHostname}`), now.toISODate());
   } catch (error) {
     console.error('更新日付の更新に失敗しました');
+  }
+};
+
+const updateUser = async (hostname: string, body: ExpectedRequestBody) => {
+  const reference = ref(rtdb, `kintone/users/${hostname}`);
+
+  const snapshot = await get(reference);
+
+  if (!snapshot.exists()) {
+    await set(reference, {
+      name: body.name || '',
+      pluginNames: body.pluginNames || [],
+    });
+  } else {
+    const data = snapshot.val();
+
+    const pluginNames = body.pluginNames || [];
+    const registered: string[] = data.pluginNames || [];
+
+    const noChanges = pluginNames.every((plugin) => registered.includes(plugin));
+
+    if (!noChanges) {
+      await update(reference, {
+        pluginNames: [...new Set([...pluginNames, ...registered])],
+      });
+    }
   }
 };
 
@@ -132,12 +135,4 @@ const postToGAS = (body: ExpectedRequestBody) => {
       from: 'ribbit-next-app',
     }),
   });
-};
-
-const getNewProps = (hostname: string, body: ExpectedRequestBody) => {
-  return {
-    hostname,
-    name: body.name || '',
-    pluginNames: body.pluginNames || [],
-  };
 };
