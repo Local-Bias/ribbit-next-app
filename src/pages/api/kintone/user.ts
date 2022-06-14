@@ -10,7 +10,7 @@ type Data = {
 type ExpectedRequestBody = Partial<{
   hostname: string;
   pluginNames: string[];
-  name: '';
+  name: string;
   counter: number;
   installDate: string;
 }>;
