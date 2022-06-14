@@ -10,9 +10,9 @@ type Data = {
 type ExpectedRequestBody = Partial<{
   hostname: string;
   pluginNames: string[];
-  name: string;
-  counter: number;
-  installDate: string;
+  page: string;
+  email: string;
+  appName: string;
 }>;
 
 export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
@@ -59,6 +59,18 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
   }
 
   try {
+    await updateEmails(formattedHostname, body.email || '');
+  } catch (error) {
+    console.error('メールアドレスの更新に失敗しました');
+  }
+
+  try {
+    await updateAppNames(formattedHostname, body.appName || '');
+  } catch (error) {
+    console.error('アプリ名の更新に失敗しました');
+  }
+
+  try {
     await updateCounter(formattedHostname);
   } catch (error) {
     console.error('カウンターの更新に失敗しました');
@@ -84,7 +96,7 @@ const updateUser = async (hostname: string, body: ExpectedRequestBody) => {
 
   if (!snapshot.exists()) {
     await set(reference, {
-      name: body.name || '',
+      name: '',
       pluginNames: body.pluginNames || [],
     });
   } else {
@@ -101,6 +113,50 @@ const updateUser = async (hostname: string, body: ExpectedRequestBody) => {
       });
     }
   }
+};
+
+const updateEmails = async (hostname: string, email: string) => {
+  if (!email) {
+    return;
+  }
+
+  const emailRef = ref(rtdb, `kintone/email/${hostname}`);
+  const snapshot = await get(emailRef);
+
+  if (!snapshot.exists()) {
+    await set(emailRef, [email]);
+    return;
+  }
+
+  const registered: string[] = snapshot.val();
+
+  if (registered.includes(email)) {
+    return;
+  }
+
+  await set(emailRef, [...registered, email]);
+};
+
+const updateAppNames = async (hostname: string, appName: string) => {
+  if (!appName) {
+    return;
+  }
+
+  const reference = ref(rtdb, `kintone/appName/${hostname}`);
+  const snapshot = await get(reference);
+
+  if (!snapshot.exists()) {
+    await set(reference, [appName]);
+    return;
+  }
+
+  const registered: string[] = snapshot.val();
+
+  if (registered.includes(appName)) {
+    return;
+  }
+
+  await set(reference, [...registered, appName]);
 };
 
 const updateCounter = async (hostname: string) => {
