@@ -96,6 +96,8 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     if (!installDateSnapshot.exists()) {
       await set(installDateRef, now.toISODate());
     }
+
+    await set(ref(rtdb, `kintone/lastModified/${formattedHostname}`), now.toISODate());
   }
 };
 
