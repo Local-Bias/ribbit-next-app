@@ -64,7 +64,7 @@ const getResponseFromRtdb = async () => {
 
     if (!summarySnapshot.exists()) {
       const unixTime = now.toUnixInteger();
-      await set(summaryRef, { unixTime, numUsers, counter });
+      await set(summaryRef, { unixTime, numUsers: numUsers.length, counter });
     }
   } catch (error) {
     console.error('集計情報をDBに登録する際にエラーが発生しました');
