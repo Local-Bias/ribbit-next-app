@@ -1,4 +1,5 @@
 import { get, ref, set, update } from 'firebase/database';
+import { DateTime } from 'luxon';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rtdb } from 'src/lib/firebase/rdtb';
 
@@ -51,10 +52,12 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
 
   const reference = ref(rtdb, `kintone/users/${formattedHostname}`);
 
+  const now = DateTime.local();
+
   const snapshot = await get(reference);
 
   if (!snapshot.exists()) {
-    await set(reference, getNewProps(hostname, body, { rtdb: true }));
+    await set(reference, getNewProps(hostname, body));
   } else {
     const data = snapshot.val();
     const counter = data?.counter || 0;
@@ -86,6 +89,13 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     } else {
       await set(counterRef, base.counter);
     }
+
+    const installDateRef = ref(rtdb, `kintone/installDate/${formattedHostname}`);
+    const installDateSnapshot = await get(installDateRef);
+
+    if (!installDateSnapshot.exists()) {
+      await set(installDateRef, now.toISODate());
+    }
   }
 };
 
@@ -103,15 +113,14 @@ const postToGAS = (body: ExpectedRequestBody) => {
   });
 };
 
-const getNewProps = (hostname: string, body: ExpectedRequestBody, options?: { rtdb?: boolean }) => {
-  const date = body.installDate ? new Date(body.installDate) : new Date();
+const getNewProps = (hostname: string, body: ExpectedRequestBody) => {
+  const now = DateTime.local();
 
   return {
     hostname,
     name: body.name || '',
     counter: body.counter || 1,
     pluginNames: body.pluginNames || [],
-    installDate: options?.rtdb ? date.toLocaleString() : date,
-    lastModified: options?.rtdb ? date.toLocaleString() : date,
+    lastModified: now.toISODate(),
   };
 };
