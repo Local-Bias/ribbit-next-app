@@ -1,7 +1,7 @@
-import { get, getDatabase, ref } from 'firebase/database';
-import { collection, getDocs } from 'firebase/firestore';
+import { get, getDatabase, ref, set } from 'firebase/database';
+import { DateTime } from 'luxon';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDB, initializeFirebase } from '../../../src/firebase';
+import { initializeFirebase } from '../../../src/firebase';
 
 type Data = {
   result: string;
@@ -29,29 +29,6 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   }
 };
 
-const getResponseFromFirestore = async () => {
-  const db = getDB();
-
-  const querySnapshot = await getDocs(collection(db, 'kintone-plugin-users'));
-
-  if (querySnapshot.empty) {
-    throw 'コレクションが存在しません';
-  }
-
-  let counter = 0;
-
-  querySnapshot.forEach((document) => {
-    const data = document.data();
-    counter += data?.counter || 0;
-  });
-
-  return {
-    result: `取得完了`,
-    counter,
-    numUsers: querySnapshot.size,
-  };
-};
-
 type KintoneUser = Partial<{
   counter: number;
   hostname: string;
@@ -74,11 +51,24 @@ const getResponseFromRtdb = async () => {
 
   const kintoneUsers = Object.values(data);
 
+  const numUsers = kintoneUsers.filter((user) => !user.ignores);
+
   const counter = kintoneUsers.reduce((acc, user) => {
     return acc + (user.counter || 0);
   }, 0);
 
-  const numUsers = kintoneUsers.filter((user) => !user.ignores);
+  try {
+    const now = DateTime.local();
+    const summaryRef = ref(db, `kintone/summary/${now.toISODate()}`);
+    const summarySnapshot = await get(summaryRef);
+
+    if (!summarySnapshot.exists()) {
+      const unixTime = now.toUnixInteger();
+      await set(summaryRef, { unixTime, numUsers, counter });
+    }
+  } catch (error) {
+    console.error('集計情報をDBに登録する際にエラーが発生しました');
+  }
 
   return {
     result: `取得完了`,
