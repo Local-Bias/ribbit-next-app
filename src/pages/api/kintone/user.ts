@@ -43,7 +43,7 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
 };
 
 const updateRtdb = async (body: ExpectedRequestBody) => {
-  const hostname = body.hostname || '___unknown';
+  const hostname = body.hostname || '___undefined';
 
   const formattedHostname = hostname
     .replace('.cybozu.com', '')
@@ -79,24 +79,44 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
         ...base,
       });
     }
+  }
 
-    const counterRef = ref(rtdb, `kintone/counter/${formattedHostname}`);
-    const counterSnapshot = await get(counterRef);
+  try {
+    await updateCounter(formattedHostname);
+  } catch (error) {
+    console.error('カウンターの更新に失敗しました');
+  }
 
-    if (counterSnapshot.exists()) {
-      await set(counterRef, Number(counterSnapshot.val()) + 1);
-    } else {
-      await set(counterRef, base.counter);
-    }
+  try {
+    await updateInstallDate(formattedHostname, now);
+  } catch (error) {
+    console.error('インストール日付の更新に失敗しました');
+  }
 
-    const installDateRef = ref(rtdb, `kintone/installDate/${formattedHostname}`);
-    const installDateSnapshot = await get(installDateRef);
-
-    if (!installDateSnapshot.exists()) {
-      await set(installDateRef, now.toISODate());
-    }
-
+  try {
     await set(ref(rtdb, `kintone/lastModified/${formattedHostname}`), now.toISODate());
+  } catch (error) {
+    console.error('更新日付の更新に失敗しました');
+  }
+};
+
+const updateCounter = async (hostname: string) => {
+  const counterRef = ref(rtdb, `kintone/counter/${hostname}`);
+  const counterSnapshot = await get(counterRef);
+
+  if (counterSnapshot.exists()) {
+    await set(counterRef, Number(counterSnapshot.val()) + 1);
+  } else {
+    await set(counterRef, 1);
+  }
+};
+
+const updateInstallDate = async (hostname: string, now: DateTime) => {
+  const installDateRef = ref(rtdb, `kintone/installDate/${hostname}`);
+  const installDateSnapshot = await get(installDateRef);
+
+  if (!installDateSnapshot.exists()) {
+    await set(installDateRef, now.toISODate());
   }
 };
 
@@ -115,13 +135,9 @@ const postToGAS = (body: ExpectedRequestBody) => {
 };
 
 const getNewProps = (hostname: string, body: ExpectedRequestBody) => {
-  const now = DateTime.local();
-
   return {
     hostname,
     name: body.name || '',
-    counter: body.counter || 1,
     pluginNames: body.pluginNames || [],
-    lastModified: now.toISODate(),
   };
 };
