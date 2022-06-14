@@ -1,6 +1,6 @@
-import { get, getDatabase, ref, set, update } from 'firebase/database';
+import { get, ref, set, update } from 'firebase/database';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { initializeFirebase } from '../../../src/firebase';
+import { rtdb } from 'src/lib/firebase/rdtb';
 
 type Data = {
   result: string;
@@ -42,9 +42,6 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
 };
 
 const updateRtdb = async (body: ExpectedRequestBody) => {
-  initializeFirebase();
-  const db = getDatabase();
-
   const hostname = body.hostname || '___unknown';
 
   const formattedHostname = hostname
@@ -52,7 +49,7 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     .replace('.kintone.com', '')
     .replace(/\./g, '_dot_');
 
-  const reference = ref(db, `kintone/users/${formattedHostname}`);
+  const reference = ref(rtdb, `kintone/users/${formattedHostname}`);
 
   const snapshot = await get(reference);
 
@@ -81,7 +78,7 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
       });
     }
 
-    const counterRef = ref(db, `kintone/counter/${formattedHostname}`);
+    const counterRef = ref(rtdb, `kintone/counter/${formattedHostname}`);
     const counterSnapshot = await get(counterRef);
 
     if (counterSnapshot.exists()) {

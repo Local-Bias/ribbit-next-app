@@ -1,7 +1,7 @@
-import { get, getDatabase, ref, set } from 'firebase/database';
+import { get, ref, set } from 'firebase/database';
 import { DateTime } from 'luxon';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { initializeFirebase } from '../../../src/firebase';
+import { rtdb } from 'src/lib/firebase/rdtb';
 
 type Data = {
   result: string;
@@ -40,10 +40,7 @@ type KintoneUser = Partial<{
 }>;
 
 const getResponseFromRtdb = async () => {
-  initializeFirebase();
-  const db = getDatabase();
-
-  const reference = ref(db, 'kintone/users');
+  const reference = ref(rtdb, 'kintone/users');
 
   const snapshot = await get(reference);
 
@@ -59,7 +56,7 @@ const getResponseFromRtdb = async () => {
 
   try {
     const now = DateTime.local();
-    const summaryRef = ref(db, `kintone/summary/${now.toISODate()}`);
+    const summaryRef = ref(rtdb, `kintone/summary/${now.toISODate()}`);
     const summarySnapshot = await get(summaryRef);
 
     if (!summarySnapshot.exists()) {
