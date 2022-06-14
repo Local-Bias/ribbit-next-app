@@ -29,30 +29,16 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   }
 };
 
-type KintoneUser = Partial<{
-  counter: number;
-  hostname: string;
-  installDate: string;
-  lastModified: string;
-  name: string;
-  pluginNames: string[];
-  ignores: boolean;
-}>;
-
 const getResponseFromRtdb = async () => {
-  const reference = ref(rtdb, 'kintone/users');
+  const counterRef = ref(rtdb, 'kintone/counter');
 
-  const snapshot = await get(reference);
+  const snapshot = await get(counterRef);
 
-  const data: Record<string, KintoneUser> = snapshot.val();
+  const data: Record<string, number> = snapshot.val();
 
-  const kintoneUsers = Object.values(data);
+  const counters = Object.values(data);
 
-  const numUsers = kintoneUsers.filter((user) => !user.ignores);
-
-  const counter = kintoneUsers.reduce((acc, user) => {
-    return acc + (user.counter || 0);
-  }, 0);
+  const counter = counters.reduce((acc, count) => acc + count, 0);
 
   try {
     const now = DateTime.local();
@@ -61,7 +47,7 @@ const getResponseFromRtdb = async () => {
 
     if (!summarySnapshot.exists()) {
       const unixTime = now.toUnixInteger();
-      await set(summaryRef, { unixTime, numUsers: numUsers.length, counter });
+      await set(summaryRef, { unixTime, numUsers: counters.length, counter });
     }
   } catch (error) {
     console.error('集計情報をDBに登録する際にエラーが発生しました');
@@ -70,6 +56,6 @@ const getResponseFromRtdb = async () => {
   return {
     result: `取得完了`,
     counter,
-    numUsers: numUsers.length,
+    numUsers: counters.length,
   };
 };
