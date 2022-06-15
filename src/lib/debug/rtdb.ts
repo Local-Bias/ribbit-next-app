@@ -39,3 +39,24 @@ export const mergeCounter = async () => {
   }
   console.log(`🎉 全て完了しました`);
 };
+
+export const removeLegacyUserData = async () => {
+  const usersRef = ref(rtdb, 'kintone/users');
+
+  const usersSnapshot = await get(usersRef);
+
+  if (!usersSnapshot.exists()) {
+    console.error('ユーザー情報の取得に失敗しました');
+    return;
+  }
+
+  const users = usersSnapshot.val();
+
+  for (const hostname of Object.keys(users)) {
+    set(ref(rtdb, `kintone/users/${hostname}/installDate`), null);
+    set(ref(rtdb, `kintone/users/${hostname}/lastModified`), null);
+    set(ref(rtdb, `kintone/users/${hostname}/hostname`), null);
+    set(ref(rtdb, `kintone/users/${hostname}/counter`), null);
+    console.log(`🔥 ${hostname}のユーザー情報の一部を削除しました`);
+  }
+};

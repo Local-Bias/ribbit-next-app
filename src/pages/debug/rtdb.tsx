@@ -9,7 +9,7 @@ import {
 } from '../../lib/debug/realtime-database';
 import { DropZone } from '../../components/drop-zone';
 import { useDropzone } from 'react-dropzone';
-import { mergeCounter } from 'src/lib/debug/rtdb';
+import { mergeCounter, removeLegacyUserData } from 'src/lib/debug/rtdb';
 
 type ContainerProps = Readonly<{}>;
 type Props = ContainerProps & Readonly<{}>;
@@ -54,6 +54,13 @@ const Component: VFCX<Props> = ({ className }) => {
           }}
         >
           kintone/users情報をkintone/counterにマージ
+        </Button>
+        <Button
+          variant='contained'
+          color='error'
+          onClick={async () => await removeLegacyUserData()}
+        >
+          不要なユーザーデータを削除
         </Button>
       </div>
       <div>
