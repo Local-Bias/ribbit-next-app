@@ -27,6 +27,11 @@ export default async (req: NextApiRequest, res: NextApiResponse<Data>) => {
         console.error('realtime database更新時にエラーが発生しました', error);
         causedError = true;
       }
+      try {
+        updateSummary();
+      } catch (error) {
+        console.error('集計情報をDBに登録する際にエラーが発生しました');
+      }
       if (!causedError) {
         res.status(200).json({ result: `データベースへ追加しました` });
       } else {
@@ -191,4 +196,32 @@ const postToGAS = (body: ExpectedRequestBody) => {
       from: 'ribbit-next-app',
     }),
   });
+};
+
+const updateSummary = async () => {
+  const now = DateTime.local().plus({ hours: 9 });
+  const summaryRef = ref(rtdb, `kintone/summary/${now.toISODate()}`);
+
+  const summarySnapshot = await get(summaryRef);
+
+  if (summarySnapshot.exists()) {
+    return;
+  }
+
+  const counterRef = ref(rtdb, 'kintone/counter');
+  const counterSnapshot = await get(counterRef);
+
+  if (!counterSnapshot.exists()) {
+    console.error('カウンターの取得に失敗しました');
+    return;
+  }
+
+  const data: Record<string, number> = counterSnapshot.val();
+
+  const counters = Object.values(data);
+
+  const sum = counters.reduce((acc, count) => acc + count, 0);
+
+  const unixTime = now.toUnixInteger();
+  await set(summaryRef, { unixTime, numUsers: counters.length, counter: sum });
 };
