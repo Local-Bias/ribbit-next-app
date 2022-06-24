@@ -63,11 +63,11 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
     console.error('ユーザー情報の更新に失敗しました');
   }
 
-  try {
-    await updateEmails(formattedHostname, body.email || '');
-  } catch (error) {
-    console.error('メールアドレスの更新に失敗しました');
-  }
+  // try {
+  //   await updateEmails(formattedHostname, body.email || '');
+  // } catch (error) {
+  //   console.error('メールアドレスの更新に失敗しました');
+  // }
 
   try {
     await updateAppNames(formattedHostname, body.appName || '');
