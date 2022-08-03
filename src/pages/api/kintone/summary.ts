@@ -47,7 +47,35 @@ const getResponseFromRtdb = async () => {
 
     if (!summarySnapshot.exists()) {
       const unixTime = now.toUnixInteger();
-      await set(summaryRef, { unixTime, numUsers: counters.length, counter });
+
+      try {
+        const lastModifiedRef = ref(rtdb, `kintone/lastModified`);
+        const lastModifiedSnapshot = await get(lastModifiedRef);
+        const lastModifiedRecords: Record<string, string> = lastModifiedSnapshot.val();
+        const lastMonth = now.minus({ months: 1 });
+        const yesterday = now.minus({ days: 1 });
+        const lastWeek = now.minus({ days: 7 });
+
+        let dau = 0;
+        let wau = 0;
+        let mau = 0;
+        for (const lastModified of Object.values(lastModifiedRecords)) {
+          const date = DateTime.fromFormat(lastModified, 'yyyy-MM-dd');
+
+          if (date > yesterday) {
+            dau++;
+          }
+          if (date > lastWeek) {
+            wau++;
+          }
+          if (date > lastMonth) {
+            mau++;
+          }
+        }
+        await set(summaryRef, { unixTime, numUsers: counters.length, counter, dau, wau, mau });
+      } catch (error) {
+        await set(summaryRef, { unixTime, numUsers: counters.length, counter });
+      }
     }
   } catch (error) {
     console.error('集計情報をDBに登録する際にエラーが発生しました');
