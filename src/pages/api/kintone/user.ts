@@ -51,8 +51,7 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
   const hostname = body.hostname || '___undefined';
 
   const formattedHostname = hostname
-    .replace('.cybozu.com', '')
-    .replace('.kintone.com', '')
+    .replace(/(\.s)?\.(cybozu|kintone)\.com/, '')
     .replace(/\./g, '_dot_');
 
   const now = DateTime.local();
@@ -69,11 +68,11 @@ const updateRtdb = async (body: ExpectedRequestBody) => {
   //   console.error('メールアドレスの更新に失敗しました');
   // }
 
-  try {
-    await updateAppNames(formattedHostname, body.appName || '');
-  } catch (error) {
-    console.error('アプリ名の更新に失敗しました');
-  }
+  // try {
+  //   await updateAppNames(formattedHostname, body.appName || '');
+  // } catch (error) {
+  //   console.error('アプリ名の更新に失敗しました');
+  // }
 
   try {
     await updateCounter(formattedHostname);
